@@ -2,7 +2,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { NgooPayment } from "../typechain-types";
+import { NgooPayment as NgooPaymentType } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ async function deployFixture() {
   const signerWallet = ethers.Wallet.createRandom();
 
   const NgooPayment = await ethers.getContractFactory("NgooPayment");
-  const contract = (await NgooPayment.deploy(signerWallet.address)) as NgooPayment;
+  const contract = (await NgooPayment.deploy(signerWallet.address)) as unknown as NgooPaymentType;
   await contract.waitForDeployment();
 
   return { contract, owner, user, attacker, withdrawTarget, signerWallet };
@@ -105,13 +105,14 @@ describe("NgooPayment", function () {
 
     it("should set correct signer", async function () {
       const { contract, signerWallet } = await loadFixture(deployFixture);
-      expect(await contract.signer()).to.equal(signerWallet.address);
+      expect(await contract.getFunction("signer")()).to.equal(signerWallet.address);
     });
 
     it("should revert when signer is zero address", async function () {
       const NgooPayment = await ethers.getContractFactory("NgooPayment");
-      await expect(NgooPayment.deploy(ethers.ZeroAddress)).to.be.revertedWith(
-        "Signer cannot be zero address",
+      await expect(NgooPayment.deploy(ethers.ZeroAddress)).to.be.revertedWithCustomError(
+        await ethers.getContractFactory("NgooPayment"),
+        "ZeroAddress",
       );
     });
   });
@@ -137,7 +138,7 @@ describe("NgooPayment", function () {
         contract.connect(user).payOrder(params.orderId, params.amount, params.nonce, params.deadline, params.signature, {
           value: params.amount,
         }),
-      ).to.be.revertedWith("Proof expired");
+      ).to.be.revertedWithCustomError(contract, "ProofExpired");
     });
 
     it("should revert on nonce reuse", async function () {
@@ -162,7 +163,7 @@ describe("NgooPayment", function () {
         contract.connect(user).payOrder(params2.orderId, params2.amount, params2.nonce, params2.deadline, params2.signature, {
           value: params2.amount,
         }),
-      ).to.be.revertedWith("Nonce already used");
+      ).to.be.revertedWithCustomError(contract, "NonceAlreadyUsed");
     });
 
     it("should revert when order is already paid", async function () {
@@ -180,7 +181,18 @@ describe("NgooPayment", function () {
         contract.connect(user).payOrder(params2.orderId, params2.amount, params2.nonce, params2.deadline, params2.signature, {
           value: params2.amount,
         }),
-      ).to.be.revertedWith("Order already paid");
+      ).to.be.revertedWithCustomError(contract, "OrderAlreadyPaid");
+    });
+
+    it("should revert when amount is zero", async function () {
+      const { contract, user, signerWallet } = await loadFixture(deployFixture);
+      const params = await makePayParams(signerWallet, user.address, { amount: 0n });
+
+      await expect(
+        contract.connect(user).payOrder(params.orderId, params.amount, params.nonce, params.deadline, params.signature, {
+          value: 0n,
+        }),
+      ).to.be.revertedWithCustomError(contract, "AmountMustBeNonZero");
     });
 
     it("should revert when msg.value does not match amount", async function () {
@@ -191,7 +203,7 @@ describe("NgooPayment", function () {
         contract.connect(user).payOrder(params.orderId, params.amount, params.nonce, params.deadline, params.signature, {
           value: ethers.parseEther("0.01"), // wrong amount
         }),
-      ).to.be.revertedWith("Incorrect payment amount");
+      ).to.be.revertedWithCustomError(contract, "IncorrectPaymentAmount");
     });
 
     it("should revert when signature is from wrong signer", async function () {
@@ -204,7 +216,7 @@ describe("NgooPayment", function () {
         contract.connect(user).payOrder(params.orderId, params.amount, params.nonce, params.deadline, params.signature, {
           value: params.amount,
         }),
-      ).to.be.revertedWith("Invalid signature");
+      ).to.be.revertedWithCustomError(contract, "InvalidSignature");
     });
 
     it("should revert when payer does not match signed address", async function () {
@@ -218,7 +230,7 @@ describe("NgooPayment", function () {
         contract.connect(attacker).payOrder(params.orderId, params.amount, params.nonce, params.deadline, params.signature, {
           value: params.amount,
         }),
-      ).to.be.revertedWith("Invalid signature");
+      ).to.be.revertedWithCustomError(contract, "InvalidSignature");
     });
 
     it("should revert when contract is paused", async function () {
@@ -322,14 +334,14 @@ describe("NgooPayment", function () {
       const tooMuch = ethers.parseEther("100");
       await expect(
         contract.connect(owner).withdraw(withdrawTarget.address, tooMuch),
-      ).to.be.revertedWith("Insufficient balance");
+      ).to.be.revertedWithCustomError(contract, "InsufficientBalance");
     });
 
     it("should revert when withdrawing to zero address", async function () {
       const { contract, owner } = await loadFixture(fundedFixture);
       await expect(
         contract.connect(owner).withdraw(ethers.ZeroAddress, ethers.parseEther("0.01")),
-      ).to.be.revertedWith("Cannot withdraw to zero address");
+      ).to.be.revertedWithCustomError(contract, "ZeroAddress");
     });
 
     it("should emit FundsWithdrawn event", async function () {
@@ -361,7 +373,7 @@ describe("NgooPayment", function () {
       const newSigner = ethers.Wallet.createRandom();
 
       await contract.connect(owner).setSigner(newSigner.address);
-      expect(await contract.signer()).to.equal(newSigner.address);
+      expect(await contract.getFunction("signer")()).to.equal(newSigner.address);
     });
 
     it("should revert when called by non-owner", async function () {
@@ -376,8 +388,9 @@ describe("NgooPayment", function () {
 
     it("should revert when new signer is zero address", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await expect(contract.connect(owner).setSigner(ethers.ZeroAddress)).to.be.revertedWith(
-        "Signer cannot be zero address",
+      await expect(contract.connect(owner).setSigner(ethers.ZeroAddress)).to.be.revertedWithCustomError(
+        contract,
+        "ZeroAddress",
       );
     });
 
@@ -388,6 +401,43 @@ describe("NgooPayment", function () {
       await expect(contract.connect(owner).setSigner(newSigner.address))
         .to.emit(contract, "SignerUpdated")
         .withArgs(signerWallet.address, newSigner.address);
+    });
+  });
+
+  // ── Ownable2Step ───────────────────────────────────────────────────────────
+  describe("Ownable2Step", function () {
+    it("should require pending owner to accept ownership", async function () {
+      const { contract, owner, attacker } = await loadFixture(deployFixture);
+      const newOwner = attacker;
+
+      await contract.connect(owner).transferOwnership(newOwner.address);
+
+      // Owner is still the original until acceptance
+      expect(await contract.owner()).to.equal(owner.address);
+      expect(await contract.pendingOwner()).to.equal(newOwner.address);
+
+      // New owner must accept
+      await contract.connect(newOwner).acceptOwnership();
+      expect(await contract.owner()).to.equal(newOwner.address);
+    });
+
+    it("should not transfer ownership without acceptance", async function () {
+      const { contract, owner, attacker } = await loadFixture(deployFixture);
+
+      await contract.connect(owner).transferOwnership(attacker.address);
+
+      // Original owner is still in control
+      expect(await contract.owner()).to.equal(owner.address);
+    });
+
+    it("should revert if non-pending-owner tries to accept", async function () {
+      const { contract, owner, user, attacker } = await loadFixture(deployFixture);
+
+      await contract.connect(owner).transferOwnership(user.address);
+
+      await expect(
+        contract.connect(attacker).acceptOwnership(),
+      ).to.be.revertedWithCustomError(contract, "OwnableUnauthorizedAccount");
     });
   });
 
@@ -432,8 +482,8 @@ describe("NgooPayment", function () {
     });
   });
 
-  // ── receive fallback ───────────────────────────────────────────────────────
-  describe("receive fallback", function () {
+  // ── receive / fallback ─────────────────────────────────────────────────────
+  describe("receive / fallback", function () {
     it("should revert direct BNB transfers", async function () {
       const { contract, user } = await loadFixture(deployFixture);
       await expect(
@@ -441,7 +491,18 @@ describe("NgooPayment", function () {
           to: await contract.getAddress(),
           value: ethers.parseEther("0.01"),
         }),
-      ).to.be.revertedWith("Direct transfers not accepted");
+      ).to.be.revertedWithCustomError(contract, "DirectTransferNotAccepted");
+    });
+
+    it("should revert calls with unknown calldata", async function () {
+      const { contract, user } = await loadFixture(deployFixture);
+      await expect(
+        user.sendTransaction({
+          to: await contract.getAddress(),
+          value: 0n,
+          data: "0xdeadbeef",
+        }),
+      ).to.be.revertedWithCustomError(contract, "DirectTransferNotAccepted");
     });
   });
 });
