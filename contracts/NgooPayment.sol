@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -14,8 +14,11 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
  *      Each payment is authorized by a server-side ECDSA signature that binds
  *      the order ID, payer address, exact amount, nonce, deadline, and chain ID.
  *      Uses OpenZeppelin for all security-critical primitives.
+ *
+ *      Ownership uses Ownable2Step — the new owner must call acceptOwnership()
+ *      to confirm the transfer, preventing irrecoverable loss from a typo.
  */
-contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
+contract NgooPayment is Ownable2Step, ReentrancyGuard, Pausable {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -37,6 +40,19 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
     /// @notice Tracks used nonces to prevent replay attacks
     mapping(bytes32 => bool) public usedNonces;
 
+    // --- Custom Errors ---
+
+    error ProofExpired();
+    error NonceAlreadyUsed();
+    error OrderAlreadyPaid();
+    error AmountMustBeNonZero();
+    error IncorrectPaymentAmount();
+    error InvalidSignature();
+    error ZeroAddress();
+    error InsufficientBalance();
+    error TransferFailed();
+    error DirectTransferNotAccepted();
+
     // --- Events ---
 
     /// @notice Emitted when a payment is successfully received
@@ -55,7 +71,7 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
      * @param _signer The server-side wallet address that signs payment proofs
      */
     constructor(address _signer) Ownable(msg.sender) {
-        require(_signer != address(0), "Signer cannot be zero address");
+        if (_signer == address(0)) revert ZeroAddress();
         signer = _signer;
     }
 
@@ -67,7 +83,7 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
      *      keccak256(abi.encode(orderId, msg.sender, amount, nonce, deadline, block.chainid))
      *      wrapped in the EIP-191 prefix via MessageHashUtils.toEthSignedMessageHash.
      * @param orderId  keccak256 hash of the order UUID string
-     * @param amount   Exact payment amount in wei (must match msg.value)
+     * @param amount   Exact payment amount in wei (must match msg.value, must be > 0)
      * @param nonce    Random 32-byte value, single-use to prevent replay
      * @param deadline Unix timestamp after which the proof is invalid
      * @param signature 65-byte ECDSA signature from the server signer
@@ -79,17 +95,18 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
         uint256 deadline,
         bytes calldata signature
     ) external payable whenNotPaused nonReentrant {
-        require(block.timestamp <= deadline, "Proof expired");
-        require(!usedNonces[nonce], "Nonce already used");
-        require(!payments[orderId].exists, "Order already paid");
-        require(msg.value == amount, "Incorrect payment amount");
+        if (block.timestamp > deadline) revert ProofExpired();
+        if (usedNonces[nonce]) revert NonceAlreadyUsed();
+        if (payments[orderId].exists) revert OrderAlreadyPaid();
+        if (amount == 0) revert AmountMustBeNonZero();
+        if (msg.value != amount) revert IncorrectPaymentAmount();
 
         bytes32 messageHash = keccak256(
             abi.encode(orderId, msg.sender, amount, nonce, deadline, block.chainid)
         );
         bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
         address recovered = ethSignedHash.recover(signature);
-        require(recovered == signer, "Invalid signature");
+        if (recovered != signer) revert InvalidSignature();
 
         usedNonces[nonce] = true;
         payments[orderId] = PaymentRecord({
@@ -112,12 +129,12 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
      * @param amount Amount in wei to withdraw
      */
     function withdraw(address payable to, uint256 amount) external onlyOwner nonReentrant {
-        require(to != address(0), "Cannot withdraw to zero address");
-        require(amount > 0, "Amount must be greater than zero");
-        require(address(this).balance >= amount, "Insufficient balance");
+        if (to == address(0)) revert ZeroAddress();
+        if (amount == 0) revert AmountMustBeNonZero();
+        if (address(this).balance < amount) revert InsufficientBalance();
 
         (bool success, ) = to.call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) revert TransferFailed();
 
         emit FundsWithdrawn(to, amount);
     }
@@ -127,7 +144,7 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
      * @param _newSigner New server-side signer wallet address
      */
     function setSigner(address _newSigner) external onlyOwner {
-        require(_newSigner != address(0), "Signer cannot be zero address");
+        if (_newSigner == address(0)) revert ZeroAddress();
         address oldSigner = signer;
         signer = _newSigner;
         emit SignerUpdated(oldSigner, _newSigner);
@@ -162,10 +179,16 @@ contract NgooPayment is Ownable, ReentrancyGuard, Pausable {
     // --- Fallback ---
 
     /**
-     * @dev Reject direct BNB transfers to prevent accidental deposits.
-     *      All payments must go through payOrder with a valid server signature.
+     * @dev Reject direct BNB transfers — all payments must go through payOrder.
      */
     receive() external payable {
-        revert("Direct transfers not accepted");
+        revert DirectTransferNotAccepted();
+    }
+
+    /**
+     * @dev Reject calls to non-existent functions with calldata.
+     */
+    fallback() external payable {
+        revert DirectTransferNotAccepted();
     }
 }
