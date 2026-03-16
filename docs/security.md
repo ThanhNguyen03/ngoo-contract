@@ -7,14 +7,14 @@
 | **Replay attack** — re-submit a valid past signature | Single-use `nonce`: `usedNonces[nonce] = true` on first use; any reuse reverts with "Nonce already used" |
 | **Double payment** — pay for the same order twice | `payments[orderId].exists` check; second attempt reverts with "Order already paid" |
 | **Proof forgery** — attacker creates a fake signature | ECDSA signature must be from `signer`; `ECDSA.recover` + address equality check |
-| **Cross-chain replay** — use a BNB Testnet proof on mainnet | `block.chainid` is included in the signed message hash; signature is chain-specific |
+| **Cross-chain replay** — use a Sepolia proof on mainnet | `block.chainid` is included in the signed message hash; signature is chain-specific |
 | **Overpayment / underpayment** — send a different amount** | `msg.value == amount` exact equality check; any mismatch reverts |
 | **Proof expiry bypass** — use a stale proof** | `block.timestamp <= deadline` check; expired proofs revert with "Proof expired" |
 | **Payer substitution** — attacker uses someone else's proof | `msg.sender` is included in the hash; signature is bound to the intended payer's address |
 | **Hash collision via encodePacked** — craft colliding inputs | `abi.encode` used (NOT `abi.encodePacked`); all fields are fixed-width, collision is impossible |
 | **Reentrancy** — re-enter payOrder during execution | `nonReentrant` modifier from OpenZeppelin ReentrancyGuard |
 | **Reentrancy in withdraw** — re-enter via ETH receive hook | `nonReentrant` modifier; checks-effects-interactions pattern (state not modified in withdraw, but guard is belt-and-suspenders) |
-| **Direct BNB deposit** — accidental ETH send to contract | `receive()` always reverts; funds cannot be locked accidentally |
+| **Direct ETH deposit** — accidental ETH send to contract | `receive()` always reverts; funds cannot be locked accidentally |
 | **Compromised signer key** — server key leaked | Owner can call `setSigner` to rotate to a new key without redeployment |
 | **Funds locked / contract bug** — need to recover funds | `withdraw` works even when contract is `paused`; owner can always retrieve funds |
 | **Unauthorized admin** — attacker calls owner functions | All admin functions protected by `onlyOwner` from OpenZeppelin Ownable |

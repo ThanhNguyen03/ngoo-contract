@@ -51,26 +51,26 @@ Edit `.env`:
 ```env
 DEPLOYER_PRIVATE_KEY=0x<your_deployer_private_key>
 SIGNER_ADDRESS=0x<server_signer_public_address>
-BNB_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545
-BSCSCAN_API_KEY=<optional>
+SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+ETHERSCAN_API_KEY=<optional>
 ```
 
 See [Deployment Guide](deployment-guide.md) for how to obtain each value.
 
-## 6. Deploy to BNB Testnet
+## 6. Deploy to Ethereum Sepolia
 
 ```bash
-npx hardhat run scripts/deploy.ts --network bscTestnet
+npx hardhat run scripts/deploy.ts --network sepolia
 ```
 
 The script prints the contract address and the env vars you need to add to ngoo-server-2025.
 
-## 7. Verify on BscScan (optional)
+## 7. Verify on Etherscan (optional)
 
 After deployment the script prints the exact verify command. It looks like:
 
 ```bash
-npx hardhat verify --network bscTestnet <CONTRACT_ADDRESS> "<SIGNER_ADDRESS>"
+npx hardhat verify --network sepolia <CONTRACT_ADDRESS> "<SIGNER_ADDRESS>"
 ```
 
-Run it once BscScan has indexed the deployment transaction (usually within 1-2 minutes).
+Run it once Etherscan has indexed the deployment transaction (usually within 1-2 minutes).

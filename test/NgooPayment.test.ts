@@ -484,7 +484,7 @@ describe("NgooPayment", function () {
 
   // ── receive / fallback ─────────────────────────────────────────────────────
   describe("receive / fallback", function () {
-    it("should revert direct BNB transfers", async function () {
+    it("should revert direct ETH transfers", async function () {
       const { contract, user } = await loadFixture(deployFixture);
       await expect(
         user.sendTransaction({
