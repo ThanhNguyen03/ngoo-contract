@@ -55,7 +55,7 @@ Pay for an order using a server-issued proof.
 1. `block.timestamp <= deadline` — proof has not expired
 2. `!usedNonces[nonce]` — nonce is fresh
 3. `!payments[orderId].exists` — order has not been paid before
-4. `msg.value == amount` — exact BNB amount was sent
+4. `msg.value == amount` — exact ETH amount was sent
 5. Recovers the signer from the EIP-191 hash; must equal `signer`
 
 **Effects:**
@@ -109,7 +109,7 @@ Returns the `PaymentRecord` for the given `orderId`. If the order has not been p
 receive() external payable
 ```
 
-Always reverts with `"Direct transfers not accepted"`. Prevents accidental BNB deposits outside of `payOrder`.
+Always reverts with `"Direct transfers not accepted"`. Prevents accidental ETH deposits outside of `payOrder`.
 
 ### Events
 

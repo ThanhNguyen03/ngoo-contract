@@ -19,7 +19,7 @@ async function main() {
   console.log(`Deployer address: ${deployer.address}`);
 
   const balance = await ethers.provider.getBalance(deployer.address);
-  console.log(`Deployer balance: ${ethers.formatEther(balance)} BNB`);
+  console.log(`Deployer balance: ${ethers.formatEther(balance)} ETH`);
 
   const NgooPayment = await ethers.getContractFactory("NgooPayment");
   const contract = await NgooPayment.deploy(signerAddress);
@@ -30,7 +30,7 @@ async function main() {
   const address = await contract.getAddress();
   console.log(`NgooPayment deployed to: ${address}`);
 
-  // Wait for 5 block confirmations for BscScan verification
+  // Wait for 5 block confirmations for Etherscan verification
   if (network.name !== "hardhat" && network.name !== "localhost") {
     console.log("Waiting for 5 block confirmations...");
     const tx = contract.deploymentTransaction();
@@ -38,7 +38,7 @@ async function main() {
       await tx.wait(5);
     }
     console.log("Confirmed!");
-    console.log(`\nVerify on BscScan:`);
+    console.log(`\nVerify on Etherscan:`);
     console.log(`npx hardhat verify --network ${network.name} ${address} "${signerAddress}"`);
   }
 
@@ -49,7 +49,7 @@ async function main() {
   console.log(`Deployer:         ${deployer.address}`);
   console.log("\nUpdate ngoo-server-2025 env vars:");
   console.log(`NGOO_CONTRACT_ADDRESS=${address}`);
-  console.log(`NGOO_CHAIN_ID=97`);
+  console.log(`NGOO_CHAIN_ID=11155111`);
 }
 
 main().catch((err) => {

@@ -8,15 +8,15 @@ Add these to ngoo-server-2025's `.env` after deploying the contract:
 # Contract address returned by the deploy script
 NGOO_CONTRACT_ADDRESS=0x<contract_address>
 
-# Chain ID — 97 for BNB Testnet
-NGOO_CHAIN_ID=97
+# Chain ID — 11155111 for Ethereum Sepolia
+NGOO_CHAIN_ID=11155111
 
 # Private key of the server-side signer wallet
 # The corresponding public address must be set as the contract's `signer`
 NGOO_SIGNER_PRIVATE_KEY=0x<signer_private_key>
 
 # RPC endpoint for reading contract state and subscribing to events
-NGOO_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545
+NGOO_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 ```
 
 ## ABI consumption
@@ -116,7 +116,7 @@ Frontend                  ngoo-server-2025            NgooPayment.sol
    |<-- { proof } -------------|                            |
    |                            |                            |
    |-- payOrder(proof) -------->|                            |
-   |       (tx on BNB)          |                            |
+   |       (tx on Sepolia)       |                            |
    |                            |<-- PaymentReceived event --|
    |                            |    (orderId, payer, amt)   |
    |                            |-- updateOrder(PAID)        |

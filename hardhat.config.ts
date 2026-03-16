@@ -7,8 +7,8 @@ dotenv.config();
 // Fail fast if DEPLOYER_PRIVATE_KEY is missing when targeting a live network.
 // The fallback is only used for local `hardhat` network (compile/test), never for deployment.
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
-const BNB_TESTNET_RPC_URL =
-  process.env.BNB_TESTNET_RPC_URL || "https://data-seed-prebsc-1-s1.binance.org:8545";
+const SEPOLIA_RPC_URL =
+  process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 
 // Resolved at config load time so a missing key is caught before any deployment attempt.
 function liveAccounts(): string[] {
@@ -34,22 +34,15 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: 31337,
     },
-    bscTestnet: {
-      url: BNB_TESTNET_RPC_URL,
-      chainId: 97,
+    sepolia: {
+      url: SEPOLIA_RPC_URL,
+      chainId: 11155111,
       accounts: liveAccounts(),
-      gasPrice: 10000000000, // 10 gwei
-    },
-    bscTestnetFallback: {
-      url: "https://bsc-testnet-rpc.publicnode.com",
-      chainId: 97,
-      accounts: liveAccounts(),
-      gasPrice: 10000000000,
     },
   },
   etherscan: {
     apiKey: {
-      bscTestnet: process.env.BSCSCAN_API_KEY || "",
+      sepolia: process.env.ETHERSCAN_API_KEY || "",
     },
   },
   gasReporter: {

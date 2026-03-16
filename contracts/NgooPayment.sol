@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 /**
  * @title NgooPayment
  * @notice On-chain payment contract for the Ngoo food ordering platform.
- * @dev Accepts tBNB payments on BNB Testnet (chain ID 97) for food orders.
+ * @dev Accepts ETH payments on Ethereum Sepolia (chain ID 11155111) for food orders.
  *      Each payment is authorized by a server-side ECDSA signature that binds
  *      the order ID, payer address, exact amount, nonce, deadline, and chain ID.
  *      Uses OpenZeppelin for all security-critical primitives.
@@ -179,7 +179,7 @@ contract NgooPayment is Ownable2Step, ReentrancyGuard, Pausable {
     // --- Fallback ---
 
     /**
-     * @dev Reject direct BNB transfers — all payments must go through payOrder.
+     * @dev Reject direct ETH transfers — all payments must go through payOrder.
      */
     receive() external payable {
         revert DirectTransferNotAccepted();

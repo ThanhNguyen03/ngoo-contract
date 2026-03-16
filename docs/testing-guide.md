@@ -61,7 +61,7 @@ This uses `hardhat-gas-reporter`. Key costs to watch:
 | withdraw | 7 | Full/partial withdraw, non-owner, insufficient, zero address, event, paused |
 | setSigner | 4 | Rotation, non-owner, zero address, event |
 | Pausable | 4 | pause, unpause, blocked payOrder, restored payOrder |
-| receive fallback | 1 | Direct BNB transfer rejection |
+| receive fallback | 1 | Direct ETH transfer rejection |
 
 ## Fixture pattern
 

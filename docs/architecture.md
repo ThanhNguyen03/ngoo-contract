@@ -15,7 +15,7 @@
 │              │                  deadline, sig) + msg.value
 │              │ ─────────────────────────────────────────────> ┌──────────────────┐
 │              │                                                │  NgooPayment.sol │
-│              │ <───────────────────────────────────────────── │  (BNB Testnet)   │
+│              │ <───────────────────────────────────────────── │  (Sepolia)       │
 │              │        ④ tx receipt / PaymentReceived event    └────────┬─────────┘
 └──────────────┘                                                         │
                                                                          │ ⑤ event
@@ -39,7 +39,7 @@ Both the server (proof generator) and the contract (proof verifier) must use ide
 | `amount` | `uint256` | `bigint` | `parseEther("0.05")` |
 | `nonce` | `bytes32` | `string` (hex, 0x-prefixed) | `hexlify(randomBytes(32))` |
 | `deadline` | `uint256` | `number` | Unix seconds |
-| `block.chainid` | `uint256` | `bigint` (97 on testnet) | Prevents cross-chain replay |
+| `block.chainid` | `uint256` | `bigint` (11155111 on Sepolia) | Prevents cross-chain replay |
 
 ### Contract side
 
